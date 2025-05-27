@@ -7,6 +7,9 @@ on:
     tags:
       - 'v*.*.*'    # semantic-version tags, e.g. v1.2.3
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: 🏗 Build linux_amd64
@@ -58,29 +61,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download zipped binary
-        uses: actions/download-artifact@v3
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
         with:
           name: terraform-provider-hostman-linux-amd64
           path: release/
 
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create or update GitHub Release
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: ${{ github.ref_name }}
-          release_name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-
-      - name: Upload provider zip to Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release/${{ needs.build.outputs.artifact-name }}
-          asset_name: ${{ needs.build.outputs.artifact-name }}
-          asset_content_type: application/zip
+          # if the release doesn't exist it will be created,
+          # if it already exists it will simply upload/update assets
+          tag: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          allowUpdates: true           # ← key to avoid “already_exists” errors :contentReference[oaicite:0]{index=0}
+          artifacts: release/${{ needs.build.outputs.artifact-name }}
