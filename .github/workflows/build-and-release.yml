@@ -1,21 +1,18 @@
-name: Build & Release Terraform Provider (Linux)
+name: Build & Release Terraform Provider
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     tags:
-      - 'v*.*.*'    # semantic-version tags, e.g. v1.2.3
+      - 'v*.*.*'    # only on semver tags, e.g. v1.2.3
 
 permissions:
   contents: write
 
 jobs:
   build:
-    name: 🏗 Build linux_amd64
+    name: 🏗 Build all platforms
     runs-on: ubuntu-latest
-    outputs:
-      artifact-name: terraform-provider-hostman_${{ github.ref_name }}_linux_amd64.zip
 
     steps:
       - name: Checkout code
@@ -36,62 +33,96 @@ jobs:
       - name: Install dependencies
         run: go mod tidy
 
-      - name: Build provider binary
-        run: |
-          mkdir -p bin
-          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/terraform-provider-hostman
-
-      - name: Zip provider for release
-        id: zip
+      - id: build
+        name: Build and zip all binaries
+        shell: bash
         run: |
           VERSION=${GITHUB_REF_NAME#v}
-          ARTIFACT=terraform-provider-hostman_${VERSION}_linux_amd64.zip
-          zip -j bin/${ARTIFACT} bin/terraform-provider-hostman
-          echo "artifact=$ARTIFACT" >> $GITHUB_OUTPUT
+          PLATFORMS=(
+            "linux amd64"
+            "linux arm64"
+            "linux arm 6"
+            "darwin amd64"
+            "darwin arm64"
+            "windows amd64"
+          )
+          mkdir -p dist
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4.6.2
+          for p in "${PLATFORMS[@]}"; do
+            read os arch arm <<< "$p"
+            export GOOS=$os
+            export GOARCH=$arch
+            if [ "$arch" = "arm" ]; then export GOARM=$arm; fi
+
+            BIN=terraform-provider-hostman
+            [ "$os" = "windows" ] && BIN=${BIN}.exe
+
+            OUT=terraform-provider-hostman_${VERSION}_${os}_${arch}.zip
+
+            # build + strip symbols
+            go build -ldflags="-s -w" -o $BIN
+
+            # package
+            zip -j dist/$OUT $BIN
+
+            # clean up
+            rm $BIN
+          done
+
+      - name: Upload all zips
+        uses: actions/upload-artifact@v2
         with:
-          name: terraform-provider-hostman-linux-amd64
-          path: bin/${{ steps.zip.outputs.artifact }}
+          name: provider-dist
+          path: dist/*.zip
 
   release:
     name: 🚀 Publish GitHub Release
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ replace(github.ref_name, 'v', '') }}
 
     steps:
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
+      - name: Download built zips
+        uses: actions/download-artifact@v2
         with:
-          name: terraform-provider-hostman-linux-amd64
-          path: release/
+          name: provider-dist
+          path: dist/
 
       - name: Import GPG private key
         run: |
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
-          # mark imported key as ultimately trusted
           echo -e "trust\n5\ny\nquit" | \
-            gpg --batch --command-fd 0 --edit-key "$(gpg --list-keys --with-colons | awk -F: '/^pub/ { print $5 }')"
+            gpg --batch --command-fd 0 --edit-key \
+              "$(gpg --list-keys --with-colons | awk -F: '/^pub/ {print $5}')"
 
-      - name: Sign provider ZIP
+      - name: Sign every zip
         run: |
-          ARTIFACT=${{ needs.build.outputs.artifact-name }}
-          gpg --batch --yes \
-              --pinentry-mode loopback \
-              --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
-              --output "release/${ARTIFACT}.sig" \
-              --detach-sign "release/${ARTIFACT}"
+          for z in dist/*.zip; do
+            gpg --batch --yes \
+                --pinentry-mode loopback \
+                --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
+                --output "${z}.sig" \
+                --detach-sign "$z"
+          done
 
       - name: Create or update GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          # if the release doesn't exist it will be created,
-          # if it already exists it will simply upload/update assets
           tag: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
-          allowUpdates: true           # ← key to avoid “already_exists” errors :contentReference[oaicite:0]{index=0}
+          allowUpdates: true
           artifacts: |
-            release/${{ needs.build.outputs.artifact-name }}
-            release/${{ needs.build.outputs.artifact-name }}.sig
+            ${{ format("dist/terraform-provider-hostman_%s_linux_amd64.zip", env.VERSION) }}
+            ${{ format("dist/terraform-provider-hostman_%s_linux_amd64.zip.sig", env.VERSION) }}
+            ${{ format("dist/terraform-provider-hostman_%s_linux_arm64.zip", env.VERSION) }}
+            ${{ format("dist/terraform-provider-hostman_%s_linux_arm64.zip.sig", env.VERSION) }}
+            ${{ format("dist/terraform-provider-hostman_%s_linux_arm.zip", env.VERSION) }}
+            ${{ format("dist/terraform-provider-hostman_%s_linux_arm.zip.sig", env.VERSION) }}
+            ${{ format("dist/terraform-provider-hostman_%s_darwin_amd64.zip", env.VERSION) }}
+            ${{ format("dist/terraform-provider-hostman_%s_darwin_amd64.zip.sig", env.VERSION) }}
+            ${{ format("dist/terraform-provider-hostman_%s_darwin_arm64.zip", env.VERSION) }}
+            ${{ format("dist/terraform-provider-hostman_%s_darwin_arm64.zip.sig", env.VERSION) }}
+            ${{ format("dist/terraform-provider-hostman_%s_windows_amd64.zip", env.VERSION) }}
+            ${{ format("dist/terraform-provider-hostman_%s_windows_amd64.zip.sig", env.VERSION) }}
