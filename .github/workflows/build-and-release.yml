@@ -44,7 +44,8 @@ jobs:
       - name: Zip provider for release
         id: zip
         run: |
-          ARTIFACT=terraform-provider-hostman_${{ github.ref_name }}_linux_amd64.zip
+          VERSION=${GITHUB_REF_NAME#v}
+          ARTIFACT=terraform-provider-hostman_${VERSION}_linux_amd64.zip
           zip -j bin/${ARTIFACT} bin/terraform-provider-hostman
           echo "artifact=$ARTIFACT" >> $GITHUB_OUTPUT
 
