@@ -7,6 +7,9 @@ on:
     tags:
       - 'v*.*.*'    # semantic-version tags, e.g. v1.2.3
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: 🏗 Build linux_amd64
