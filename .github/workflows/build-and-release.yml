@@ -46,7 +46,7 @@ jobs:
           echo "artifact=$ARTIFACT" >> $GITHUB_OUTPUT
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: terraform-provider-hostman-linux-amd64
           path: bin/${{ steps.zip.outputs.artifact }}
