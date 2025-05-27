@@ -67,6 +67,22 @@ jobs:
           name: terraform-provider-hostman-linux-amd64
           path: release/
 
+      - name: Import GPG private key
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+          # mark imported key as ultimately trusted
+          echo -e "trust\n5\ny\nquit" | \
+            gpg --batch --command-fd 0 --edit-key "$(gpg --list-keys --with-colons | awk -F: '/^pub/ { print $5 }')"
+
+      - name: Sign provider ZIP
+        run: |
+          ARTIFACT=${{ needs.build.outputs.artifact-name }}
+          gpg --batch --yes \
+              --pinentry-mode loopback \
+              --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
+              --output "release/${ARTIFACT}.sig" \
+              --detach-sign "release/${ARTIFACT}"
+
       - name: Create or update GitHub Release
         uses: ncipollo/release-action@v1
         with:
@@ -75,4 +91,6 @@ jobs:
           tag: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           allowUpdates: true           # ← key to avoid “already_exists” errors :contentReference[oaicite:0]{index=0}
-          artifacts: release/${{ needs.build.outputs.artifact-name }}
+          artifacts: |
+            release/${{ needs.build.outputs.artifact-name }}
+            release/${{ needs.build.outputs.artifact-name }}.sig
