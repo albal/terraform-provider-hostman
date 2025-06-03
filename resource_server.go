@@ -83,12 +83,19 @@ func resourceServerCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	token := meta.(string)
 
 	payload := map[string]interface{}{
-		"name":           d.Get("name").(string),
-		"bandwidth":      d.Get("bandwidth").(int),
-		"preset_id":      d.Get("preset_id").(int),
-		"os_id":          d.Get("os_id").(int),
-		"image_id":       d.Get("image_id").(string),
-		"is_ddos_guard":  d.Get("is_ddos_guard").(bool),
+		"name":          d.Get("name").(string),
+		"bandwidth":     d.Get("bandwidth").(int),
+		"is_ddos_guard": d.Get("is_ddos_guard").(bool),
+	}
+
+	if imageID := d.Get("image_id").(string); imageID != "" {
+		payload["image_id"] = imageID
+	} else if osID := d.Get("os_id").(int); osID != 0 {
+		payload["os_id"] = osID
+	}
+
+	if presetID := d.Get("preset_id").(int); presetID != 0 {
+		payload["preset_id"] = presetID
 	}
 
 	body, err := makeRequest("POST", "https://hostman.com/api/v1/servers", token, payload)
