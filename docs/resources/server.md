@@ -30,3 +30,4 @@ description: |-
 ### Read-Only
 
 - `id` (String) The ID of this resource.
+- `root_pass` (String, Sensitive) The root password for the server. Only available after creation.

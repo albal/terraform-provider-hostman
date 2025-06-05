@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -44,6 +45,12 @@ func resourceServer() *schema.Resource {
 			"is_ddos_guard": {
 				Type:     schema.TypeBool,
 				Required: true,
+			},
+			"root_pass": {
+				Type:     schema.TypeString,
+				Computed: true,
+				Sensitive: true,
+				Description: "The root password for the server. Only available after creation.",
 			},
 		},
 	}
@@ -112,6 +119,34 @@ func resourceServerCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	id := int(server["id"].(float64))
 	d.SetId(strconv.Itoa(id))
 
+    // Poll for root_pass to become available
+    var rootPass string
+    maxWait := 30 * time.Minute
+    interval := 5 * time.Second
+    start := time.Now()
+    for {
+        // Fetch server details
+        body, err := makeRequest("GET", fmt.Sprintf("https://hostman.com/api/v1/servers/%d", id), token, nil)
+        if err != nil {
+            return diag.FromErr(err)
+        }
+        var pollResp map[string]interface{}
+        if err := json.Unmarshal(body, &pollResp); err != nil {
+            return diag.FromErr(err)
+        }
+        srv := pollResp["server"].(map[string]interface{})
+        if pass, ok := srv["root_pass"].(string); ok && pass != "" {
+            rootPass = pass
+            break
+        }
+        if time.Since(start) > maxWait {
+            return diag.Errorf("timeout waiting for root_pass to become available")
+        }
+        time.Sleep(interval)
+    }
+
+	d.Set("root_pass", rootPass)
+
 	return resourceServerRead(ctx, d, meta)
 }
 
@@ -131,6 +166,7 @@ func resourceServerRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	server := resp["server"].(map[string]interface{})
 	d.Set("name", server["name"])
+	d.Set("root_pass", server["root_pass"])
 	// Add more attributes as needed
 
 	return nil
