@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// TestAccProviderFactories tests that our provider can be instantiated 
+// TestAccProviderFactories tests that our provider can be instantiated
 func TestAccProviderFactories(t *testing.T) {
 	if err := Provider().InternalValidate(); err != nil {
 		t.Fatalf("provider validation failed: %s", err)
@@ -81,19 +81,19 @@ func TestTerraformConfigParsing(t *testing.T) {
 			// Test that configuration can be parsed
 			// This validates the resource schema definitions
 			provider := Provider()
-			
+
 			// Create a test helper to validate the config structure
 			// Note: We can't fully test without API but we can validate schema
 			resources := provider.ResourcesMap
-			
+
 			if len(resources) != 2 {
 				t.Errorf("expected 2 resources, got %d", len(resources))
 			}
-			
+
 			if _, ok := resources["hostman_server"]; !ok {
 				t.Error("hostman_server resource not found")
 			}
-			
+
 			if _, ok := resources["hostman_ip"]; !ok {
 				t.Error("hostman_ip resource not found")
 			}
@@ -104,13 +104,13 @@ func TestTerraformConfigParsing(t *testing.T) {
 // Test that resource configurations can be created and have expected attributes
 func TestResourceConfiguration(t *testing.T) {
 	testProvider := Provider()
-	
+
 	t.Run("server resource configuration", func(t *testing.T) {
 		serverResource := testProvider.ResourcesMap["hostman_server"]
 		if serverResource == nil {
 			t.Fatal("server resource not found")
 		}
-		
+
 		// Test that all CRUD operations are defined
 		if serverResource.CreateContext == nil {
 			t.Error("CreateContext not defined for server resource")
@@ -125,13 +125,13 @@ func TestResourceConfiguration(t *testing.T) {
 			t.Error("DeleteContext not defined for server resource")
 		}
 	})
-	
+
 	t.Run("IP resource configuration", func(t *testing.T) {
 		ipResource := testProvider.ResourcesMap["hostman_ip"]
 		if ipResource == nil {
 			t.Fatal("IP resource not found")
 		}
-		
+
 		// Test that all CRUD operations are defined
 		if ipResource.CreateContext == nil {
 			t.Error("CreateContext not defined for IP resource")
@@ -151,21 +151,21 @@ func TestResourceConfiguration(t *testing.T) {
 // TestProviderMetadata tests provider metadata and configuration
 func TestProviderMetadata(t *testing.T) {
 	provider := Provider()
-	
+
 	// Test that token is correctly configured
 	tokenSchema := provider.Schema["token"]
 	if tokenSchema == nil {
 		t.Fatal("token schema not found")
 	}
-	
+
 	if !tokenSchema.Required {
 		t.Error("token should be required")
 	}
-	
+
 	if tokenSchema.Type.String() != "TypeString" {
 		t.Errorf("expected token type to be TypeString, got %s", tokenSchema.Type.String())
 	}
-	
+
 	// Test that ConfigureContextFunc is set
 	if provider.ConfigureContextFunc == nil {
 		t.Error("ConfigureContextFunc should be set")
@@ -219,18 +219,18 @@ func TestConfigurationFormats(t *testing.T) {
 					is_ddos_guard = false
 				}
 			`, tc.serverName, tc.bandwidth)
-			
+
 			// Basic validation that the config can be structured
 			if config == "" {
 				t.Error("config should not be empty")
 			}
-			
+
 			// Validate that we can build the testAccProviders
 			providers := testAccProviders()
 			if len(providers) != 1 {
 				t.Errorf("expected 1 provider, got %d", len(providers))
 			}
-			
+
 			if _, ok := providers["hostman"]; !ok {
 				t.Error("hostman provider not found in test providers")
 			}

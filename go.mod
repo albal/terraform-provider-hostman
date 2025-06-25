@@ -1,6 +1,6 @@
 module github.com/albal/terraform-provider-hostman
 
-go 1.20
+go 1.23
 
 require github.com/hashicorp/terraform-plugin-sdk/v2 v2.29.0
 

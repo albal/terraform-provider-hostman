@@ -27,5 +27,3 @@ func Provider() *schema.Provider {
 		},
 	}
 }
-
-
