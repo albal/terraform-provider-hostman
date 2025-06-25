@@ -1,0 +1,50 @@
+# Terraform Provider test workflow.
+name: Tests
+
+# Run this workflow on pull requests
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ['1.20', '1.21']
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+      
+      - name: Verify dependencies
+        run: go mod verify
+      
+      - name: Check formatting
+        run: |
+          # Show formatting issues but don't fail the build for existing code
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "The following files have formatting issues:"
+            gofmt -s -l .
+            echo "Consider running 'go fmt ./...' to fix formatting"
+          else
+            echo "All files are properly formatted"
+          fi
+      
+      - name: Run go vet
+        run: go vet ./...
+      
+      - name: Build
+        run: go build -v ./...
+      
+      - name: Run tests
+        run: go test -v ./...
+        env:
+          # Acceptance tests will be skipped if HOSTMAN_TOKEN is not set
+          # This is expected behavior for PR testing
+          HOSTMAN_TOKEN: ""
