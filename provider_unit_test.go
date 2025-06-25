@@ -38,7 +38,7 @@ func TestProviderConfigure(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			provider := Provider()
-			
+
 			// Create resource config
 			d := schema.TestResourceDataRaw(t, provider.Schema, map[string]interface{}{
 				"token": tc.token,

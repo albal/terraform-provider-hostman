@@ -102,7 +102,7 @@ func TestResourceIPValidation(t *testing.T) {
 			expectErr: false,
 		},
 		{
-			name: "empty config with defaults",
+			name:   "empty config with defaults",
 			config: map[string]interface{}{
 				// Using defaults
 			},
@@ -113,7 +113,7 @@ func TestResourceIPValidation(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			data := schema.TestResourceDataRaw(t, resource.Schema, tc.config)
-			
+
 			// Test defaults are applied
 			if tc.name == "empty config with defaults" {
 				if data.Get("is_ddos_guard").(bool) != false {
