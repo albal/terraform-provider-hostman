@@ -35,6 +35,35 @@ func TestAccServerResource_basic(t *testing.T) {
 	})
 }
 
+func TestAccIPResource_basic(t *testing.T) {
+	token := os.Getenv("HOSTMAN_TOKEN")
+	if token == "" {
+		t.Skip("HOSTMAN_TOKEN must be set for acceptance tests")
+	}
+
+	resourceName := "hostman_ip.test"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			if token == "" {
+				t.Fatal("HOSTMAN_TOKEN must be set for acceptance tests")
+			}
+		},
+		Providers: testAccProviders(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccIPConfig(token),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "is_ddos_guard", "false"),
+					resource.TestCheckResourceAttr(resourceName, "availability_zone", "ams-1"),
+					resource.TestCheckResourceAttr(resourceName, "comment", "tf-test-ip"),
+					resource.TestCheckResourceAttrSet(resourceName, "ip"),
+				),
+			},
+		},
+	})
+}
+
 // testAccServerConfig returns the Terraform configuration for acceptance testing.
 // It includes the provider block (with token) and the hostman_server resource.
 func testAccServerConfig(token string) string {
@@ -46,6 +75,21 @@ provider "hostman" {
 resource "hostman_server" "test" {
   name      = "tf-test-server"
   bandwidth = 200
+}
+`, token)
+}
+
+// testAccIPConfig returns the Terraform configuration for IP resource acceptance testing.
+func testAccIPConfig(token string) string {
+	return fmt.Sprintf(`
+provider "hostman" {
+  token = %q
+}
+
+resource "hostman_ip" "test" {
+  is_ddos_guard     = false
+  availability_zone = "ams-1"
+  comment           = "tf-test-ip"
 }
 `, token)
 }
