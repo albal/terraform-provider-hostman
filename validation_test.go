@@ -127,9 +127,90 @@ func TestResourceIPValidation(t *testing.T) {
 	}
 }
 
+func TestResourceKubernetesValidation(t *testing.T) {
+	resource := resourceKubernetes()
+
+	tests := []struct {
+		name   string
+		config map[string]interface{}
+		valid  bool
+	}{
+		{
+			name: "valid minimal config",
+			config: map[string]interface{}{
+				"name":           "test-cluster",
+				"k8s_version":    "1.28",
+				"network_driver": "flannel",
+			},
+			valid: true,
+		},
+		{
+			name: "valid full config",
+			config: map[string]interface{}{
+				"name":              "test-cluster",
+				"k8s_version":       "1.28",
+				"network_driver":    "flannel",
+				"availability_zone": "ams-1",
+			},
+			valid: true,
+		},
+		{
+			name: "missing required name",
+			config: map[string]interface{}{
+				"k8s_version":    "1.28",
+				"network_driver": "flannel",
+			},
+			valid: true, // TestResourceDataRaw doesn't validate required fields
+		},
+		{
+			name: "missing required k8s_version",
+			config: map[string]interface{}{
+				"name":           "test-cluster",
+				"network_driver": "flannel",
+			},
+			valid: true, // TestResourceDataRaw doesn't validate required fields
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			data := schema.TestResourceDataRaw(t, resource.Schema, tc.config)
+			if data == nil && tc.valid {
+				t.Errorf("expected valid config but got nil ResourceData")
+			}
+			if tc.valid {
+				t.Logf("Config validation passed (expected for TestResourceDataRaw): %v", tc.config)
+				// Test some basic field retrieval
+				if name, ok := tc.config["name"]; ok {
+					if data.Get("name").(string) != name {
+						t.Errorf("expected name to be %v, got %v", name, data.Get("name"))
+					}
+				}
+				if k8sVersion, ok := tc.config["k8s_version"]; ok {
+					if data.Get("k8s_version").(string) != k8sVersion {
+						t.Errorf("expected k8s_version to be %v, got %v", k8sVersion, data.Get("k8s_version"))
+					}
+				}
+				if networkDriver, ok := tc.config["network_driver"]; ok {
+					if data.Get("network_driver").(string) != networkDriver {
+						t.Errorf("expected network_driver to be %v, got %v", networkDriver, data.Get("network_driver"))
+					}
+				}
+				// Test default values
+				if _, hasAZ := tc.config["availability_zone"]; !hasAZ {
+					if data.Get("availability_zone").(string) != "ams-1" {
+						t.Errorf("expected availability_zone default to be 'ams-1', got %v", data.Get("availability_zone"))
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestResourceSchemaTypes(t *testing.T) {
 	serverResource := resourceServer()
 	ipResource := resourceIP()
+	kubernetesResource := resourceKubernetes()
 
 	// Test server resource types
 	serverTypeTests := map[string]schema.ValueType{
@@ -161,6 +242,24 @@ func TestResourceSchemaTypes(t *testing.T) {
 	for field, expectedType := range ipTypeTests {
 		if ipResource.Schema[field].Type != expectedType {
 			t.Errorf("IP resource field %q: expected type %v, got %v", field, expectedType, ipResource.Schema[field].Type)
+		}
+	}
+
+	// Test Kubernetes resource types
+	kubernetesTypeTests := map[string]schema.ValueType{
+		"name":              schema.TypeString,
+		"k8s_version":       schema.TypeString,
+		"network_driver":    schema.TypeString,
+		"availability_zone": schema.TypeString,
+		"cluster_id":        schema.TypeString,
+		"endpoint":          schema.TypeString,
+		"kubeconfig":        schema.TypeString,
+		"status":            schema.TypeString,
+	}
+
+	for field, expectedType := range kubernetesTypeTests {
+		if kubernetesResource.Schema[field].Type != expectedType {
+			t.Errorf("Kubernetes resource field %q: expected type %v, got %v", field, expectedType, kubernetesResource.Schema[field].Type)
 		}
 	}
 }

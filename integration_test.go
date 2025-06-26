@@ -86,8 +86,8 @@ func TestTerraformConfigParsing(t *testing.T) {
 			// Note: We can't fully test without API but we can validate schema
 			resources := provider.ResourcesMap
 
-			if len(resources) != 2 {
-				t.Errorf("expected 2 resources, got %d", len(resources))
+			if len(resources) != 3 {
+				t.Errorf("expected 3 resources, got %d", len(resources))
 			}
 
 			if _, ok := resources["hostman_server"]; !ok {
@@ -96,6 +96,10 @@ func TestTerraformConfigParsing(t *testing.T) {
 
 			if _, ok := resources["hostman_ip"]; !ok {
 				t.Error("hostman_ip resource not found")
+			}
+
+			if _, ok := resources["hostman_kubernetes"]; !ok {
+				t.Error("hostman_kubernetes resource not found")
 			}
 		})
 	}
@@ -144,6 +148,27 @@ func TestResourceConfiguration(t *testing.T) {
 		}
 		if ipResource.DeleteContext == nil {
 			t.Error("DeleteContext not defined for IP resource")
+		}
+	})
+
+	t.Run("Kubernetes resource configuration", func(t *testing.T) {
+		kubernetesResource := testProvider.ResourcesMap["hostman_kubernetes"]
+		if kubernetesResource == nil {
+			t.Fatal("Kubernetes resource not found")
+		}
+
+		// Test that all CRUD operations are defined
+		if kubernetesResource.CreateContext == nil {
+			t.Error("CreateContext not defined for Kubernetes resource")
+		}
+		if kubernetesResource.ReadContext == nil {
+			t.Error("ReadContext not defined for Kubernetes resource")
+		}
+		if kubernetesResource.UpdateContext == nil {
+			t.Error("UpdateContext not defined for Kubernetes resource")
+		}
+		if kubernetesResource.DeleteContext == nil {
+			t.Error("DeleteContext not defined for Kubernetes resource")
 		}
 	})
 }

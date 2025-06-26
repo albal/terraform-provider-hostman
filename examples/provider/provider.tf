@@ -27,6 +27,13 @@ resource "hostman_ip" "test-ip" {
   depends_on        = [hostman_server.test-server]
 }
 
+resource "hostman_kubernetes" "test-cluster" {
+  name              = "test-k8s-cluster"
+  k8s_version       = "1.28"
+  network_driver    = "flannel"
+  availability_zone = "ams-1"
+}
+
 variable "token" {}
 
 output "server_ip" {
@@ -35,5 +42,14 @@ output "server_ip" {
 
 output "root_password" {
   value     = hostman_server.test-server.root_pass
+  sensitive = true
+}
+
+output "kubernetes_endpoint" {
+  value = hostman_kubernetes.test-cluster.endpoint
+}
+
+output "kubernetes_kubeconfig" {
+  value     = hostman_kubernetes.test-cluster.kubeconfig
   sensitive = true
 }

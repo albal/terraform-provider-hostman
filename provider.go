@@ -18,8 +18,9 @@ func Provider() *schema.Provider {
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"hostman_server": resourceServer(),
-			"hostman_ip":     resourceIP(),
+			"hostman_server":     resourceServer(),
+			"hostman_ip":         resourceIP(),
+			"hostman_kubernetes": resourceKubernetes(),
 		},
 		ConfigureContextFunc: func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 			token := d.Get("token").(string)

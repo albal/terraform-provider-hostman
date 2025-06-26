@@ -120,3 +120,67 @@ func TestResourceIPSchema(t *testing.T) {
 		t.Errorf("expected comment to be 'test comment', got %v", data.Get("comment"))
 	}
 }
+
+func TestResourceKubernetes(t *testing.T) {
+	resource := resourceKubernetes()
+
+	// Test that the resource has the correct schema
+	expectedFields := []string{"name", "k8s_version", "network_driver", "availability_zone", "cluster_id", "endpoint", "kubeconfig", "status"}
+	for _, field := range expectedFields {
+		if _, ok := resource.Schema[field]; !ok {
+			t.Errorf("expected field %q not found in schema", field)
+		}
+	}
+
+	// Test required fields
+	requiredFields := []string{"name", "k8s_version", "network_driver"}
+	for _, field := range requiredFields {
+		if !resource.Schema[field].Required {
+			t.Errorf("expected field %q to be required", field)
+		}
+	}
+
+	// Test computed fields
+	computedFields := []string{"cluster_id", "endpoint", "kubeconfig", "status"}
+	for _, field := range computedFields {
+		if !resource.Schema[field].Computed {
+			t.Errorf("expected field %q to be computed", field)
+		}
+	}
+
+	// Test sensitive fields
+	sensitiveFields := []string{"kubeconfig"}
+	for _, field := range sensitiveFields {
+		if !resource.Schema[field].Sensitive {
+			t.Errorf("expected field %q to be sensitive", field)
+		}
+	}
+}
+
+func TestResourceKubernetesSchema(t *testing.T) {
+	resource := resourceKubernetes()
+
+	// Test that we can create a ResourceData with valid values
+	data := schema.TestResourceDataRaw(t, resource.Schema, map[string]interface{}{
+		"name":              "test-cluster",
+		"k8s_version":       "1.28",
+		"network_driver":    "flannel",
+		"availability_zone": "ams-1",
+	})
+
+	if data.Get("name").(string) != "test-cluster" {
+		t.Errorf("expected name to be 'test-cluster', got %v", data.Get("name"))
+	}
+
+	if data.Get("k8s_version").(string) != "1.28" {
+		t.Errorf("expected k8s_version to be '1.28', got %v", data.Get("k8s_version"))
+	}
+
+	if data.Get("network_driver").(string) != "flannel" {
+		t.Errorf("expected network_driver to be 'flannel', got %v", data.Get("network_driver"))
+	}
+
+	if data.Get("availability_zone").(string) != "ams-1" {
+		t.Errorf("expected availability_zone to be 'ams-1', got %v", data.Get("availability_zone"))
+	}
+}
