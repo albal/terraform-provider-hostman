@@ -32,31 +32,172 @@ func resourceKubernetes() *schema.Resource {
 			"network_driver": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "Network driver for the cluster (e.g., flannel, calico, etc.)",
+				Description: "Network driver for the cluster (e.g., kuberouter, flannel, calico, etc.)",
 			},
-			"master_count": {
+			"description": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Description of the Kubernetes cluster",
+			},
+			"master_nodes_count": {
 				Type:        schema.TypeInt,
 				Optional:    true,
 				Default:     1,
 				Description: "Number of master nodes in the cluster",
 			},
-			"master_preset": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Default:     "standard",
-				Description: "Preset/type for master nodes",
-			},
-			"worker_count": {
+			"preset_id": {
 				Type:        schema.TypeInt,
 				Optional:    true,
-				Default:     1,
-				Description: "Number of worker nodes in the cluster",
+				Description: "Master node tariff ID (e.g., 403)",
 			},
-			"worker_preset": {
-				Type:        schema.TypeString,
+			"configuration": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Description: "Master node configuration parameters. Cannot be provided together with preset_id.",
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"configurator_id": {
+							Type:        schema.TypeInt,
+							Required:    true,
+							Description: "Configurator ID",
+						},
+						"disk": {
+							Type:        schema.TypeInt,
+							Required:    true,
+							Description: "Disk size in GB",
+						},
+						"cpu": {
+							Type:        schema.TypeInt,
+							Required:    true,
+							Description: "Number of CPU cores",
+						},
+						"ram": {
+							Type:        schema.TypeInt,
+							Required:    true,
+							Description: "RAM size in MB",
+						},
+					},
+				},
+			},
+			"worker_groups": {
+				Type:        schema.TypeList,
 				Optional:    true,
-				Default:     "standard", 
-				Description: "Preset/type for worker nodes",
+				Description: "Worker groups in the cluster",
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: "Name of the worker group",
+						},
+						"preset_id": {
+							Type:        schema.TypeInt,
+							Optional:    true,
+							Description: "Worker node tariff ID. Cannot be provided together with configuration.",
+						},
+						"configuration": {
+							Type:     schema.TypeList,
+							Optional: true,
+							MaxItems: 1,
+							Description: "Worker node configuration parameters. Cannot be provided together with preset_id.",
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"configurator_id": {
+										Type:        schema.TypeInt,
+										Required:    true,
+										Description: "Configurator ID",
+									},
+									"disk": {
+										Type:        schema.TypeInt,
+										Required:    true,
+										Description: "Disk size in GB",
+									},
+									"cpu": {
+										Type:        schema.TypeInt,
+										Required:    true,
+										Description: "Number of CPU cores",
+									},
+									"ram": {
+										Type:        schema.TypeInt,
+										Required:    true,
+										Description: "RAM size in MB",
+									},
+								},
+							},
+						},
+						"node_count": {
+							Type:         schema.TypeInt,
+							Required:     true,
+							Description:  "Number of nodes in the group",
+							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+								v := val.(int)
+								if v < 1 || v > 100 {
+									errs = append(errs, fmt.Errorf("%q must be between 1 and 100, got: %d", key, v))
+								}
+								return
+							},
+						},
+						"labels": {
+							Type:        schema.TypeList,
+							Optional:    true,
+							Description: "Labels for the node group",
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"key": {
+										Type:        schema.TypeString,
+										Required:    true,
+										Description: "Label key",
+									},
+									"value": {
+										Type:        schema.TypeString,
+										Required:    true,
+										Description: "Label value",
+									},
+								},
+							},
+						},
+						"is_autoscaling": {
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Description: "Autoscaling. Automatic increase and decrease in the number of nodes in the group depending on the current load",
+						},
+						"min_size": {
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Description:  "Minimum number of nodes. To be used with is_autoscaling and max_size parameters",
+							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+								v := val.(int)
+								if v < 2 {
+									errs = append(errs, fmt.Errorf("%q must be >= 2, got: %d", key, v))
+								}
+								return
+							},
+						},
+						"max_size": {
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Description:  "Maximum number of nodes. To be used with is_autoscaling and min_size parameters",
+							ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+								v := val.(int)
+								if v < 2 {
+									errs = append(errs, fmt.Errorf("%q must be >= 2, got: %d", key, v))
+								}
+								return
+							},
+						},
+					},
+				},
+			},
+			"is_ingress": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Description: "Enable ingress controller",
+			},
+			"is_k8s_dashboard": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Description: "Enable Kubernetes dashboard",
 			},
 			"availability_zone": {
 				Type:        schema.TypeString,
@@ -98,22 +239,98 @@ func resourceKubernetesCreate(ctx context.Context, d *schema.ResourceData, meta 
 		"network_driver": d.Get("network_driver").(string),
 	}
 
-	// Add master node configuration
-	if masterCount := d.Get("master_count").(int); masterCount > 0 {
-		payload["master_count"] = masterCount
+	// Add optional description
+	if description := d.Get("description").(string); description != "" {
+		payload["description"] = description
 	}
 
-	if masterPreset := d.Get("master_preset").(string); masterPreset != "" {
-		payload["master_preset"] = masterPreset
+	// Add master nodes count
+	if masterNodesCount := d.Get("master_nodes_count").(int); masterNodesCount > 0 {
+		payload["master_nodes_count"] = masterNodesCount
 	}
 
-	// Add worker node configuration
-	if workerCount := d.Get("worker_count").(int); workerCount > 0 {
-		payload["worker_count"] = workerCount
+	// Add master node preset_id
+	if presetId := d.Get("preset_id").(int); presetId > 0 {
+		payload["preset_id"] = presetId
 	}
 
-	if workerPreset := d.Get("worker_preset").(string); workerPreset != "" {
-		payload["worker_preset"] = workerPreset
+	// Add master node configuration (alternative to preset_id)
+	if configList := d.Get("configuration").([]interface{}); len(configList) > 0 {
+		configMap := configList[0].(map[string]interface{})
+		payload["configuration"] = map[string]interface{}{
+			"configurator_id": configMap["configurator_id"].(int),
+			"disk":           configMap["disk"].(int),
+			"cpu":            configMap["cpu"].(int),
+			"ram":            configMap["ram"].(int),
+		}
+	}
+
+	// Add worker groups
+	if workerGroupsList := d.Get("worker_groups").([]interface{}); len(workerGroupsList) > 0 {
+		workerGroups := make([]map[string]interface{}, 0, len(workerGroupsList))
+		
+		for _, wg := range workerGroupsList {
+			workerGroup := wg.(map[string]interface{})
+			group := map[string]interface{}{
+				"name":       workerGroup["name"].(string),
+				"node_count": workerGroup["node_count"].(int),
+			}
+
+			// Add preset_id if provided
+			if presetId := workerGroup["preset_id"].(int); presetId > 0 {
+				group["preset_id"] = presetId
+			}
+
+			// Add configuration if provided (alternative to preset_id)
+			if configList := workerGroup["configuration"].([]interface{}); len(configList) > 0 {
+				configMap := configList[0].(map[string]interface{})
+				group["configuration"] = map[string]interface{}{
+					"configurator_id": configMap["configurator_id"].(int),
+					"disk":           configMap["disk"].(int),
+					"cpu":            configMap["cpu"].(int),
+					"ram":            configMap["ram"].(int),
+				}
+			}
+
+			// Add labels if provided
+			if labelsList := workerGroup["labels"].([]interface{}); len(labelsList) > 0 {
+				labels := make([]map[string]interface{}, 0, len(labelsList))
+				for _, l := range labelsList {
+					labelMap := l.(map[string]interface{})
+					labels = append(labels, map[string]interface{}{
+						"key":   labelMap["key"].(string),
+						"value": labelMap["value"].(string),
+					})
+				}
+				group["labels"] = labels
+			}
+
+			// Add autoscaling fields if provided
+			if isAutoscaling := workerGroup["is_autoscaling"].(bool); isAutoscaling {
+				group["is_autoscaling"] = isAutoscaling
+				
+				if minSize := workerGroup["min_size"].(int); minSize > 0 {
+					group["min-size"] = minSize
+				}
+				
+				if maxSize := workerGroup["max_size"].(int); maxSize > 0 {
+					group["max-size"] = maxSize
+				}
+			}
+
+			workerGroups = append(workerGroups, group)
+		}
+		
+		payload["worker_groups"] = workerGroups
+	}
+
+	// Add optional flags
+	if isIngress := d.Get("is_ingress").(bool); isIngress {
+		payload["is_ingress"] = isIngress
+	}
+
+	if isK8sDashboard := d.Get("is_k8s_dashboard").(bool); isK8sDashboard {
+		payload["is_k8s_dashboard"] = isK8sDashboard
 	}
 
 	if availabilityZone := d.Get("availability_zone").(string); availabilityZone != "" {
@@ -201,20 +418,92 @@ func resourceKubernetesRead(ctx context.Context, d *schema.ResourceData, meta in
 		d.Set("network_driver", networkDriver)
 	}
 
-	if masterCount, ok := cluster["master_count"].(float64); ok {
-		d.Set("master_count", int(masterCount))
+	if description, ok := cluster["description"].(string); ok {
+		d.Set("description", description)
 	}
 
-	if masterPreset, ok := cluster["master_preset"].(string); ok {
-		d.Set("master_preset", masterPreset)
+	if masterNodesCount, ok := cluster["master_nodes_count"].(float64); ok {
+		d.Set("master_nodes_count", int(masterNodesCount))
 	}
 
-	if workerCount, ok := cluster["worker_count"].(float64); ok {
-		d.Set("worker_count", int(workerCount))
+	if presetId, ok := cluster["preset_id"].(float64); ok {
+		d.Set("preset_id", int(presetId))
 	}
 
-	if workerPreset, ok := cluster["worker_preset"].(string); ok {
-		d.Set("worker_preset", workerPreset)
+	if configuration, ok := cluster["configuration"].(map[string]interface{}); ok {
+		configList := []interface{}{
+			map[string]interface{}{
+				"configurator_id": int(configuration["configurator_id"].(float64)),
+				"disk":           int(configuration["disk"].(float64)),
+				"cpu":            int(configuration["cpu"].(float64)),
+				"ram":            int(configuration["ram"].(float64)),
+			},
+		}
+		d.Set("configuration", configList)
+	}
+
+	if workerGroups, ok := cluster["worker_groups"].([]interface{}); ok {
+		groups := make([]interface{}, 0, len(workerGroups))
+		
+		for _, wg := range workerGroups {
+			workerGroup := wg.(map[string]interface{})
+			group := map[string]interface{}{
+				"name":       workerGroup["name"].(string),
+				"node_count": int(workerGroup["node_count"].(float64)),
+			}
+
+			if presetId, ok := workerGroup["preset_id"].(float64); ok {
+				group["preset_id"] = int(presetId)
+			}
+
+			if configuration, ok := workerGroup["configuration"].(map[string]interface{}); ok {
+				configList := []interface{}{
+					map[string]interface{}{
+						"configurator_id": int(configuration["configurator_id"].(float64)),
+						"disk":           int(configuration["disk"].(float64)),
+						"cpu":            int(configuration["cpu"].(float64)),
+						"ram":            int(configuration["ram"].(float64)),
+					},
+				}
+				group["configuration"] = configList
+			}
+
+			if labels, ok := workerGroup["labels"].([]interface{}); ok {
+				labelsList := make([]interface{}, 0, len(labels))
+				for _, l := range labels {
+					labelMap := l.(map[string]interface{})
+					labelsList = append(labelsList, map[string]interface{}{
+						"key":   labelMap["key"].(string),
+						"value": labelMap["value"].(string),
+					})
+				}
+				group["labels"] = labelsList
+			}
+
+			if isAutoscaling, ok := workerGroup["is_autoscaling"].(bool); ok {
+				group["is_autoscaling"] = isAutoscaling
+			}
+
+			if minSize, ok := workerGroup["min-size"].(float64); ok {
+				group["min_size"] = int(minSize)
+			}
+
+			if maxSize, ok := workerGroup["max-size"].(float64); ok {
+				group["max_size"] = int(maxSize)
+			}
+
+			groups = append(groups, group)
+		}
+		
+		d.Set("worker_groups", groups)
+	}
+
+	if isIngress, ok := cluster["is_ingress"].(bool); ok {
+		d.Set("is_ingress", isIngress)
+	}
+
+	if isK8sDashboard, ok := cluster["is_k8s_dashboard"].(bool); ok {
+		d.Set("is_k8s_dashboard", isK8sDashboard)
 	}
 
 	if availabilityZone, ok := cluster["availability_zone"].(string); ok {
@@ -246,17 +535,86 @@ func resourceKubernetesUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	if d.HasChange("network_driver") {
 		changes["network_driver"] = d.Get("network_driver").(string)
 	}
-	if d.HasChange("master_count") {
-		changes["master_count"] = d.Get("master_count").(int)
+	if d.HasChange("description") {
+		changes["description"] = d.Get("description").(string)
 	}
-	if d.HasChange("master_preset") {
-		changes["master_preset"] = d.Get("master_preset").(string)
+	if d.HasChange("master_nodes_count") {
+		changes["master_nodes_count"] = d.Get("master_nodes_count").(int)
 	}
-	if d.HasChange("worker_count") {
-		changes["worker_count"] = d.Get("worker_count").(int)
+	if d.HasChange("preset_id") {
+		changes["preset_id"] = d.Get("preset_id").(int)
 	}
-	if d.HasChange("worker_preset") {
-		changes["worker_preset"] = d.Get("worker_preset").(string)
+	if d.HasChange("configuration") {
+		if configList := d.Get("configuration").([]interface{}); len(configList) > 0 {
+			configMap := configList[0].(map[string]interface{})
+			changes["configuration"] = map[string]interface{}{
+				"configurator_id": configMap["configurator_id"].(int),
+				"disk":           configMap["disk"].(int),
+				"cpu":            configMap["cpu"].(int),
+				"ram":            configMap["ram"].(int),
+			}
+		}
+	}
+	if d.HasChange("worker_groups") {
+		if workerGroupsList := d.Get("worker_groups").([]interface{}); len(workerGroupsList) > 0 {
+			workerGroups := make([]map[string]interface{}, 0, len(workerGroupsList))
+			
+			for _, wg := range workerGroupsList {
+				workerGroup := wg.(map[string]interface{})
+				group := map[string]interface{}{
+					"name":       workerGroup["name"].(string),
+					"node_count": workerGroup["node_count"].(int),
+				}
+
+				if presetId := workerGroup["preset_id"].(int); presetId > 0 {
+					group["preset_id"] = presetId
+				}
+
+				if configList := workerGroup["configuration"].([]interface{}); len(configList) > 0 {
+					configMap := configList[0].(map[string]interface{})
+					group["configuration"] = map[string]interface{}{
+						"configurator_id": configMap["configurator_id"].(int),
+						"disk":           configMap["disk"].(int),
+						"cpu":            configMap["cpu"].(int),
+						"ram":            configMap["ram"].(int),
+					}
+				}
+
+				if labelsList := workerGroup["labels"].([]interface{}); len(labelsList) > 0 {
+					labels := make([]map[string]interface{}, 0, len(labelsList))
+					for _, l := range labelsList {
+						labelMap := l.(map[string]interface{})
+						labels = append(labels, map[string]interface{}{
+							"key":   labelMap["key"].(string),
+							"value": labelMap["value"].(string),
+						})
+					}
+					group["labels"] = labels
+				}
+
+				if isAutoscaling := workerGroup["is_autoscaling"].(bool); isAutoscaling {
+					group["is_autoscaling"] = isAutoscaling
+					
+					if minSize := workerGroup["min_size"].(int); minSize > 0 {
+						group["min-size"] = minSize
+					}
+					
+					if maxSize := workerGroup["max_size"].(int); maxSize > 0 {
+						group["max-size"] = maxSize
+					}
+				}
+
+				workerGroups = append(workerGroups, group)
+			}
+			
+			changes["worker_groups"] = workerGroups
+		}
+	}
+	if d.HasChange("is_ingress") {
+		changes["is_ingress"] = d.Get("is_ingress").(bool)
+	}
+	if d.HasChange("is_k8s_dashboard") {
+		changes["is_k8s_dashboard"] = d.Get("is_k8s_dashboard").(bool)
 	}
 
 	if len(changes) > 0 {
