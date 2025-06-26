@@ -24,20 +24,15 @@ func resourceKubernetes() *schema.Resource {
 				Required:    true,
 				Description: "Name of the Kubernetes cluster",
 			},
-			"node_count": {
-				Type:        schema.TypeInt,
-				Required:    true,
-				Description: "Number of nodes in the cluster",
-			},
-			"version": {
+			"k8s_version": {
 				Type:        schema.TypeString,
-				Optional:    true,
+				Required:    true,
 				Description: "Kubernetes version",
 			},
-			"node_type": {
+			"network_driver": {
 				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "Node type/preset for the cluster nodes",
+				Required:    true,
+				Description: "Network driver for the cluster (e.g., flannel, calico, etc.)",
 			},
 			"availability_zone": {
 				Type:        schema.TypeString,
@@ -74,16 +69,9 @@ func resourceKubernetesCreate(ctx context.Context, d *schema.ResourceData, meta 
 	token := meta.(string)
 
 	payload := map[string]interface{}{
-		"name":       d.Get("name").(string),
-		"node_count": d.Get("node_count").(int),
-	}
-
-	if version := d.Get("version").(string); version != "" {
-		payload["version"] = version
-	}
-
-	if nodeType := d.Get("node_type").(string); nodeType != "" {
-		payload["node_type"] = nodeType
+		"name":           d.Get("name").(string),
+		"k8s_version":    d.Get("k8s_version").(string),
+		"network_driver": d.Get("network_driver").(string),
 	}
 
 	if availabilityZone := d.Get("availability_zone").(string); availabilityZone != "" {
@@ -160,16 +148,15 @@ func resourceKubernetesRead(ctx context.Context, d *schema.ResourceData, meta in
 	cluster := resp["cluster"].(map[string]interface{})
 
 	d.Set("name", cluster["name"])
-	d.Set("node_count", int(cluster["node_count"].(float64)))
 	d.Set("cluster_id", cluster["id"])
 	d.Set("status", cluster["status"])
 
-	if version, ok := cluster["version"].(string); ok {
-		d.Set("version", version)
+	if k8sVersion, ok := cluster["k8s_version"].(string); ok {
+		d.Set("k8s_version", k8sVersion)
 	}
 
-	if nodeType, ok := cluster["node_type"].(string); ok {
-		d.Set("node_type", nodeType)
+	if networkDriver, ok := cluster["network_driver"].(string); ok {
+		d.Set("network_driver", networkDriver)
 	}
 
 	if availabilityZone, ok := cluster["availability_zone"].(string); ok {
@@ -195,14 +182,11 @@ func resourceKubernetesUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	if d.HasChange("name") {
 		changes["name"] = d.Get("name").(string)
 	}
-	if d.HasChange("node_count") {
-		changes["node_count"] = d.Get("node_count").(int)
+	if d.HasChange("k8s_version") {
+		changes["k8s_version"] = d.Get("k8s_version").(string)
 	}
-	if d.HasChange("version") {
-		changes["version"] = d.Get("version").(string)
-	}
-	if d.HasChange("node_type") {
-		changes["node_type"] = d.Get("node_type").(string)
+	if d.HasChange("network_driver") {
+		changes["network_driver"] = d.Get("network_driver").(string)
 	}
 
 	if len(changes) > 0 {

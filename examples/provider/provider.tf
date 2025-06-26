@@ -29,8 +29,8 @@ resource "hostman_ip" "test-ip" {
 
 resource "hostman_kubernetes" "test-cluster" {
   name              = "test-k8s-cluster"
-  node_count        = 3
-  version           = "1.28"
+  k8s_version       = "1.28"
+  network_driver    = "flannel"
   availability_zone = "ams-1"
 }
 

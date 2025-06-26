@@ -12,9 +12,8 @@ provider "hostman" {
 
 resource "hostman_kubernetes" "main" {
   name              = var.cluster_name
-  node_count        = var.node_count
-  version           = var.kubernetes_version
-  node_type         = var.node_type
+  k8s_version       = var.kubernetes_version
+  network_driver    = var.network_driver
   availability_zone = var.availability_zone
 }
 
@@ -30,22 +29,16 @@ variable "cluster_name" {
   default     = "my-k8s-cluster"
 }
 
-variable "node_count" {
-  description = "Number of nodes in the cluster"
-  type        = number
-  default     = 3
-}
-
 variable "kubernetes_version" {
   description = "Kubernetes version"
   type        = string
   default     = "1.28"
 }
 
-variable "node_type" {
-  description = "Node type for cluster nodes"
+variable "network_driver" {
+  description = "Network driver for the cluster"
   type        = string
-  default     = "standard"
+  default     = "flannel"
 }
 
 variable "availability_zone" {

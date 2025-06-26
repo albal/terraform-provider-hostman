@@ -99,7 +99,8 @@ func TestAccKubernetesResource_basic(t *testing.T) {
 				Config: testAccKubernetesConfig(token),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", "tf-test-cluster"),
-					resource.TestCheckResourceAttr(resourceName, "node_count", "2"),
+					resource.TestCheckResourceAttr(resourceName, "k8s_version", "1.28"),
+					resource.TestCheckResourceAttr(resourceName, "network_driver", "flannel"),
 					resource.TestCheckResourceAttr(resourceName, "availability_zone", "ams-1"),
 					resource.TestCheckResourceAttrSet(resourceName, "cluster_id"),
 					resource.TestCheckResourceAttrSet(resourceName, "status"),
@@ -133,7 +134,8 @@ provider "hostman" {
 
 resource "hostman_kubernetes" "test" {
   name              = "tf-test-cluster"
-  node_count        = 2
+  k8s_version       = "1.28"
+  network_driver    = "flannel"
   availability_zone = "ams-1"
 }
 `, token)

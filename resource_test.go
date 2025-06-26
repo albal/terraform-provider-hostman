@@ -125,7 +125,7 @@ func TestResourceKubernetes(t *testing.T) {
 	resource := resourceKubernetes()
 
 	// Test that the resource has the correct schema
-	expectedFields := []string{"name", "node_count", "version", "node_type", "availability_zone", "cluster_id", "endpoint", "kubeconfig", "status"}
+	expectedFields := []string{"name", "k8s_version", "network_driver", "availability_zone", "cluster_id", "endpoint", "kubeconfig", "status"}
 	for _, field := range expectedFields {
 		if _, ok := resource.Schema[field]; !ok {
 			t.Errorf("expected field %q not found in schema", field)
@@ -133,7 +133,7 @@ func TestResourceKubernetes(t *testing.T) {
 	}
 
 	// Test required fields
-	requiredFields := []string{"name", "node_count"}
+	requiredFields := []string{"name", "k8s_version", "network_driver"}
 	for _, field := range requiredFields {
 		if !resource.Schema[field].Required {
 			t.Errorf("expected field %q to be required", field)
@@ -163,9 +163,8 @@ func TestResourceKubernetesSchema(t *testing.T) {
 	// Test that we can create a ResourceData with valid values
 	data := schema.TestResourceDataRaw(t, resource.Schema, map[string]interface{}{
 		"name":              "test-cluster",
-		"node_count":        3,
-		"version":           "1.28",
-		"node_type":         "standard",
+		"k8s_version":       "1.28",
+		"network_driver":    "flannel",
 		"availability_zone": "ams-1",
 	})
 
@@ -173,12 +172,12 @@ func TestResourceKubernetesSchema(t *testing.T) {
 		t.Errorf("expected name to be 'test-cluster', got %v", data.Get("name"))
 	}
 
-	if data.Get("node_count").(int) != 3 {
-		t.Errorf("expected node_count to be 3, got %v", data.Get("node_count"))
+	if data.Get("k8s_version").(string) != "1.28" {
+		t.Errorf("expected k8s_version to be '1.28', got %v", data.Get("k8s_version"))
 	}
 
-	if data.Get("version").(string) != "1.28" {
-		t.Errorf("expected version to be '1.28', got %v", data.Get("version"))
+	if data.Get("network_driver").(string) != "flannel" {
+		t.Errorf("expected network_driver to be 'flannel', got %v", data.Get("network_driver"))
 	}
 
 	if data.Get("availability_zone").(string) != "ams-1" {

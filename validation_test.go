@@ -138,8 +138,9 @@ func TestResourceKubernetesValidation(t *testing.T) {
 		{
 			name: "valid minimal config",
 			config: map[string]interface{}{
-				"name":       "test-cluster",
-				"node_count": 2,
+				"name":           "test-cluster",
+				"k8s_version":    "1.28",
+				"network_driver": "flannel",
 			},
 			valid: true,
 		},
@@ -147,9 +148,8 @@ func TestResourceKubernetesValidation(t *testing.T) {
 			name: "valid full config",
 			config: map[string]interface{}{
 				"name":              "test-cluster",
-				"node_count":        3,
-				"version":           "1.28",
-				"node_type":         "standard",
+				"k8s_version":       "1.28",
+				"network_driver":    "flannel",
 				"availability_zone": "ams-1",
 			},
 			valid: true,
@@ -157,14 +157,16 @@ func TestResourceKubernetesValidation(t *testing.T) {
 		{
 			name: "missing required name",
 			config: map[string]interface{}{
-				"node_count": 2,
+				"k8s_version":    "1.28",
+				"network_driver": "flannel",
 			},
 			valid: true, // TestResourceDataRaw doesn't validate required fields
 		},
 		{
-			name: "missing required node_count",
+			name: "missing required k8s_version",
 			config: map[string]interface{}{
-				"name": "test-cluster",
+				"name":           "test-cluster",
+				"network_driver": "flannel",
 			},
 			valid: true, // TestResourceDataRaw doesn't validate required fields
 		},
@@ -184,9 +186,14 @@ func TestResourceKubernetesValidation(t *testing.T) {
 						t.Errorf("expected name to be %v, got %v", name, data.Get("name"))
 					}
 				}
-				if nodeCount, ok := tc.config["node_count"]; ok {
-					if data.Get("node_count").(int) != nodeCount {
-						t.Errorf("expected node_count to be %v, got %v", nodeCount, data.Get("node_count"))
+				if k8sVersion, ok := tc.config["k8s_version"]; ok {
+					if data.Get("k8s_version").(string) != k8sVersion {
+						t.Errorf("expected k8s_version to be %v, got %v", k8sVersion, data.Get("k8s_version"))
+					}
+				}
+				if networkDriver, ok := tc.config["network_driver"]; ok {
+					if data.Get("network_driver").(string) != networkDriver {
+						t.Errorf("expected network_driver to be %v, got %v", networkDriver, data.Get("network_driver"))
 					}
 				}
 				// Test default values
@@ -241,9 +248,8 @@ func TestResourceSchemaTypes(t *testing.T) {
 	// Test Kubernetes resource types
 	kubernetesTypeTests := map[string]schema.ValueType{
 		"name":              schema.TypeString,
-		"node_count":        schema.TypeInt,
-		"version":           schema.TypeString,
-		"node_type":         schema.TypeString,
+		"k8s_version":       schema.TypeString,
+		"network_driver":    schema.TypeString,
 		"availability_zone": schema.TypeString,
 		"cluster_id":        schema.TypeString,
 		"endpoint":          schema.TypeString,

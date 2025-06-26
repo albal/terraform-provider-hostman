@@ -16,13 +16,12 @@ description: |-
 ### Required
 
 - `name` (String) Name of the Kubernetes cluster
-- `node_count` (Number) Number of nodes in the cluster
+- `k8s_version` (String) Kubernetes version
+- `network_driver` (String) Network driver for the cluster (e.g., flannel, calico, etc.)
 
 ### Optional
 
 - `availability_zone` (String) Availability zone for the cluster
-- `node_type` (String) Node type/preset for the cluster nodes
-- `version` (String) Kubernetes version
 
 ### Read-Only
 
