@@ -399,17 +399,9 @@ func resourceKubernetesCreate(ctx context.Context, d *schema.ResourceData, meta 
 		
 		// Check if cluster is in a ready state (ready or started)
 		if statusOk && (status == "ready" || status == "started") {
-			// Try to fetch kubeconfig from the dedicated endpoint
-			kubeconfigBody, kubeconfigErr := makeRequest("GET", fmt.Sprintf("https://hostman.com/api/v1/k8s/clusters/%s/kubeconfig", id), token, nil)
-			if kubeconfigErr == nil {
-				// Successfully retrieved kubeconfig, cluster is ready
-				var kubeconfigResp map[string]interface{}
-				if err := json.Unmarshal(kubeconfigBody, &kubeconfigResp); err == nil {
-					if kubeconfig, ok := kubeconfigResp["kubeconfig"].(string); ok && kubeconfig != "" {
-						break
-					}
-				}
-			}
+			// Cluster status indicates it's ready, now we can proceed
+			// The kubeconfig will be fetched in the read function
+			break
 		}
 
 		time.Sleep(interval)
