@@ -378,7 +378,7 @@ func resourceKubernetesCreate(ctx context.Context, d *schema.ResourceData, meta 
 			return diag.Errorf("timeout waiting for cluster to become ready")
 		}
 
-		// Check cluster status directly
+		// Check cluster status first
 		body, err := makeRequest("GET", fmt.Sprintf("https://hostman.com/api/v1/k8s/clusters/%s", id), token, nil)
 		if err != nil {
 			return diag.FromErr(err)
@@ -397,13 +397,19 @@ func resourceKubernetesCreate(ctx context.Context, d *schema.ResourceData, meta 
 			return diag.Errorf("cluster creation failed with status: %s", status)
 		}
 		
-		// Check if kubeconfig is available - this indicates the cluster is truly ready
-		kubeconfig, kubeconfigOk := cluster["kubeconfig"].(string)
-		endpoint, endpointOk := cluster["endpoint"].(string)
-		
-		// Cluster is ready when both kubeconfig and endpoint are available
-		if kubeconfigOk && kubeconfig != "" && endpointOk && endpoint != "" {
-			break
+		// Check if cluster is in a ready state
+		if statusOk && status == "ready" {
+			// Try to fetch kubeconfig from the dedicated endpoint
+			kubeconfigBody, kubeconfigErr := makeRequest("GET", fmt.Sprintf("https://hostman.com/api/v1/k8s/clusters/%s/kubeconfig", id), token, nil)
+			if kubeconfigErr == nil {
+				// Successfully retrieved kubeconfig, cluster is ready
+				var kubeconfigResp map[string]interface{}
+				if err := json.Unmarshal(kubeconfigBody, &kubeconfigResp); err == nil {
+					if kubeconfig, ok := kubeconfigResp["kubeconfig"].(string); ok && kubeconfig != "" {
+						break
+					}
+				}
+			}
 		}
 
 		time.Sleep(interval)
@@ -550,8 +556,15 @@ func resourceKubernetesRead(ctx context.Context, d *schema.ResourceData, meta in
 		d.Set("endpoint", endpoint)
 	}
 
-	if kubeconfig, ok := cluster["kubeconfig"].(string); ok {
-		d.Set("kubeconfig", kubeconfig)
+	// Fetch kubeconfig from dedicated endpoint
+	kubeconfigBody, kubeconfigErr := makeRequest("GET", fmt.Sprintf("https://hostman.com/api/v1/k8s/clusters/%s/kubeconfig", id), token, nil)
+	if kubeconfigErr == nil {
+		var kubeconfigResp map[string]interface{}
+		if err := json.Unmarshal(kubeconfigBody, &kubeconfigResp); err == nil {
+			if kubeconfig, ok := kubeconfigResp["kubeconfig"].(string); ok {
+				d.Set("kubeconfig", kubeconfig)
+			}
+		}
 	}
 
 	return nil
