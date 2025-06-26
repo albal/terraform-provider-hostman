@@ -16,17 +16,16 @@ This resource manages a Kubernetes cluster on the Hostman platform. It supports 
 
 ```terraform
 resource "hostman_kubernetes" "example" {
-  name              = "my-k8s-cluster"
-  k8s_version       = "v1.28.0+k0s.0"
-  network_driver    = "kuberouter"
-  preset_id         = 403
-  worker_groups = [
-    {
-      name         = "workers"
-      preset_id    = 1745
-      node_count   = 3
-    }
-  ]
+  name           = "my-k8s-cluster"
+  k8s_version    = "v1.28.0+k0s.0"
+  network_driver = "kuberouter"
+  preset_id      = 403
+  
+  worker_groups {
+    name       = "workers"
+    preset_id  = 1745
+    node_count = 3
+  }
 }
 ```
 
@@ -50,38 +49,36 @@ resource "hostman_kubernetes" "advanced" {
     ram            = 8192
   }
 
-  worker_groups = [
-    {
-      name       = "high-memory-workers"
-      node_count = 2
-      configuration {
-        configurator_id = 57
-        disk           = 512
-        cpu            = 4
-        ram            = 16384
-      }
-      labels = [
-        {
-          key   = "workload-type"
-          value = "memory-intensive"
-        }
-      ]
-    },
-    {
-      name           = "autoscale-workers"
-      preset_id      = 1745
-      node_count     = 3
-      is_autoscaling = true
-      min_size       = 2
-      max_size       = 10
-      labels = [
-        {
-          key   = "autoscaling"
-          value = "enabled"
-        }
-      ]
+  worker_groups {
+    name       = "high-memory-workers"
+    node_count = 2
+    
+    configuration {
+      configurator_id = 57
+      disk           = 512
+      cpu            = 4
+      ram            = 16384
     }
-  ]
+    
+    labels {
+      key   = "workload-type"
+      value = "memory-intensive"
+    }
+  }
+  
+  worker_groups {
+    name           = "autoscale-workers"
+    preset_id      = 1745
+    node_count     = 3
+    is_autoscaling = true
+    min_size       = 2
+    max_size       = 10
+    
+    labels {
+      key   = "autoscaling"
+      value = "enabled"
+    }
+  }
 }
 ```
 

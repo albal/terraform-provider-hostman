@@ -21,13 +21,11 @@ resource "hostman_kubernetes" "main" {
   is_ingress         = var.is_ingress
   is_k8s_dashboard   = var.is_k8s_dashboard
 
-  worker_groups = [
-    {
-      name       = "default-workers"
-      preset_id  = var.worker_preset_id
-      node_count = var.worker_node_count
-    }
-  ]
+  worker_groups {
+    name       = "default-workers"
+    preset_id  = var.worker_preset_id
+    node_count = var.worker_node_count
+  }
 }
 
 variable "hostman_token" {

@@ -51,10 +51,11 @@ func resourceKubernetes() *schema.Resource {
 				Description: "Master node tariff ID (e.g., 403)",
 			},
 			"configuration": {
-				Type:     schema.TypeList,
-				Optional: true,
-				MaxItems: 1,
+				Type:        schema.TypeList,
+				Optional:    true,
+				MaxItems:    1,
 				Description: "Master node configuration parameters. Cannot be provided together with preset_id.",
+				ConfigMode:  schema.SchemaConfigModeBlock,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"configurator_id": {
@@ -84,6 +85,7 @@ func resourceKubernetes() *schema.Resource {
 				Type:        schema.TypeList,
 				Optional:    true,
 				Description: "Worker groups in the cluster",
+				ConfigMode:  schema.SchemaConfigModeBlock,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
@@ -97,10 +99,11 @@ func resourceKubernetes() *schema.Resource {
 							Description: "Worker node tariff ID. Cannot be provided together with configuration.",
 						},
 						"configuration": {
-							Type:     schema.TypeList,
-							Optional: true,
-							MaxItems: 1,
+							Type:        schema.TypeList,
+							Optional:    true,
+							MaxItems:    1,
 							Description: "Worker node configuration parameters. Cannot be provided together with preset_id.",
+							ConfigMode:  schema.SchemaConfigModeBlock,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"configurator_id": {
@@ -142,6 +145,7 @@ func resourceKubernetes() *schema.Resource {
 							Type:        schema.TypeList,
 							Optional:    true,
 							Description: "Labels for the node group",
+							ConfigMode:  schema.SchemaConfigModeBlock,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"key": {
