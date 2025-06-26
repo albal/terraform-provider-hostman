@@ -22,6 +22,10 @@ description: |-
 ### Optional
 
 - `availability_zone` (String) Availability zone for the cluster
+- `master_count` (Number) Number of master nodes in the cluster
+- `master_preset` (String) Preset/type for master nodes
+- `worker_count` (Number) Number of worker nodes in the cluster
+- `worker_preset` (String) Preset/type for worker nodes
 
 ### Read-Only
 

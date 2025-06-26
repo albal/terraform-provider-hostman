@@ -34,6 +34,30 @@ func resourceKubernetes() *schema.Resource {
 				Required:    true,
 				Description: "Network driver for the cluster (e.g., flannel, calico, etc.)",
 			},
+			"master_count": {
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Default:     1,
+				Description: "Number of master nodes in the cluster",
+			},
+			"master_preset": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     "standard",
+				Description: "Preset/type for master nodes",
+			},
+			"worker_count": {
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Default:     1,
+				Description: "Number of worker nodes in the cluster",
+			},
+			"worker_preset": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     "standard", 
+				Description: "Preset/type for worker nodes",
+			},
 			"availability_zone": {
 				Type:        schema.TypeString,
 				Optional:    true,
@@ -72,6 +96,24 @@ func resourceKubernetesCreate(ctx context.Context, d *schema.ResourceData, meta 
 		"name":           d.Get("name").(string),
 		"k8s_version":    d.Get("k8s_version").(string),
 		"network_driver": d.Get("network_driver").(string),
+	}
+
+	// Add master node configuration
+	if masterCount := d.Get("master_count").(int); masterCount > 0 {
+		payload["master_count"] = masterCount
+	}
+
+	if masterPreset := d.Get("master_preset").(string); masterPreset != "" {
+		payload["master_preset"] = masterPreset
+	}
+
+	// Add worker node configuration
+	if workerCount := d.Get("worker_count").(int); workerCount > 0 {
+		payload["worker_count"] = workerCount
+	}
+
+	if workerPreset := d.Get("worker_preset").(string); workerPreset != "" {
+		payload["worker_preset"] = workerPreset
 	}
 
 	if availabilityZone := d.Get("availability_zone").(string); availabilityZone != "" {
@@ -159,6 +201,22 @@ func resourceKubernetesRead(ctx context.Context, d *schema.ResourceData, meta in
 		d.Set("network_driver", networkDriver)
 	}
 
+	if masterCount, ok := cluster["master_count"].(float64); ok {
+		d.Set("master_count", int(masterCount))
+	}
+
+	if masterPreset, ok := cluster["master_preset"].(string); ok {
+		d.Set("master_preset", masterPreset)
+	}
+
+	if workerCount, ok := cluster["worker_count"].(float64); ok {
+		d.Set("worker_count", int(workerCount))
+	}
+
+	if workerPreset, ok := cluster["worker_preset"].(string); ok {
+		d.Set("worker_preset", workerPreset)
+	}
+
 	if availabilityZone, ok := cluster["availability_zone"].(string); ok {
 		d.Set("availability_zone", availabilityZone)
 	}
@@ -187,6 +245,18 @@ func resourceKubernetesUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	}
 	if d.HasChange("network_driver") {
 		changes["network_driver"] = d.Get("network_driver").(string)
+	}
+	if d.HasChange("master_count") {
+		changes["master_count"] = d.Get("master_count").(int)
+	}
+	if d.HasChange("master_preset") {
+		changes["master_preset"] = d.Get("master_preset").(string)
+	}
+	if d.HasChange("worker_count") {
+		changes["worker_count"] = d.Get("worker_count").(int)
+	}
+	if d.HasChange("worker_preset") {
+		changes["worker_preset"] = d.Get("worker_preset").(string)
 	}
 
 	if len(changes) > 0 {

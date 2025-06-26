@@ -14,6 +14,10 @@ resource "hostman_kubernetes" "main" {
   name              = var.cluster_name
   k8s_version       = var.kubernetes_version
   network_driver    = var.network_driver
+  master_count      = var.master_count
+  master_preset     = var.master_preset
+  worker_count      = var.worker_count
+  worker_preset     = var.worker_preset
   availability_zone = var.availability_zone
 }
 
@@ -39,6 +43,30 @@ variable "network_driver" {
   description = "Network driver for the cluster"
   type        = string
   default     = "flannel"
+}
+
+variable "master_count" {
+  description = "Number of master nodes in the cluster"
+  type        = number
+  default     = 1
+}
+
+variable "master_preset" {
+  description = "Preset/type for master nodes"
+  type        = string
+  default     = "standard"
+}
+
+variable "worker_count" {
+  description = "Number of worker nodes in the cluster"
+  type        = number
+  default     = 1
+}
+
+variable "worker_preset" {
+  description = "Preset/type for worker nodes"
+  type        = string
+  default     = "standard"
 }
 
 variable "availability_zone" {
