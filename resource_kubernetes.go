@@ -514,15 +514,16 @@ func resourceKubernetesRead(ctx context.Context, d *schema.ResourceData, meta in
 				group["labels"] = labelsList
 			}
 
-			if isAutoscaling, ok := workerGroup["is_autoscaling"].(bool); ok {
+			// Only set autoscaling fields if they exist and have meaningful values
+			if isAutoscaling, ok := workerGroup["is_autoscaling"].(bool); ok && isAutoscaling {
 				group["is_autoscaling"] = isAutoscaling
 			}
 
-			if minSize, ok := workerGroup["min-size"].(float64); ok {
+			if minSize, ok := workerGroup["min-size"].(float64); ok && minSize > 0 {
 				group["min_size"] = int(minSize)
 			}
 
-			if maxSize, ok := workerGroup["max-size"].(float64); ok {
+			if maxSize, ok := workerGroup["max-size"].(float64); ok && maxSize > 0 {
 				group["max_size"] = int(maxSize)
 			}
 
@@ -551,10 +552,20 @@ func resourceKubernetesRead(ctx context.Context, d *schema.ResourceData, meta in
 	// Fetch kubeconfig from dedicated endpoint
 	kubeconfigBody, kubeconfigErr := makeRequest("GET", fmt.Sprintf("https://hostman.com/api/v1/k8s/clusters/%s/kubeconfig", id), token, nil)
 	if kubeconfigErr == nil {
-		var kubeconfigResp map[string]interface{}
-		if err := json.Unmarshal(kubeconfigBody, &kubeconfigResp); err == nil {
-			if kubeconfig, ok := kubeconfigResp["kubeconfig"].(string); ok {
-				d.Set("kubeconfig", kubeconfig)
+		// Try to parse as direct kubeconfig string response first
+		kubeconfigStr := string(kubeconfigBody)
+		if kubeconfigStr != "" && kubeconfigStr != "null" && kubeconfigStr != "{}" {
+			// Check if it's a JSON response with kubeconfig field
+			var kubeconfigResp map[string]interface{}
+			if err := json.Unmarshal(kubeconfigBody, &kubeconfigResp); err == nil {
+				if kubeconfig, ok := kubeconfigResp["kubeconfig"].(string); ok && kubeconfig != "" {
+					d.Set("kubeconfig", kubeconfig)
+				}
+			} else {
+				// If not JSON, treat as raw kubeconfig content
+				if kubeconfigStr != "" {
+					d.Set("kubeconfig", kubeconfigStr)
+				}
 			}
 		}
 	}
