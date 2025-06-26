@@ -79,6 +79,36 @@ resource "hostman_server" "test" {
 `, token)
 }
 
+func TestAccKubernetesResource_basic(t *testing.T) {
+	token := os.Getenv("HOSTMAN_TOKEN")
+	if token == "" {
+		t.Skip("HOSTMAN_TOKEN must be set for acceptance tests")
+	}
+
+	resourceName := "hostman_kubernetes.test"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck: func() {
+			if token == "" {
+				t.Fatal("HOSTMAN_TOKEN must be set for acceptance tests")
+			}
+		},
+		Providers: testAccProviders(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccKubernetesConfig(token),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(resourceName, "name", "tf-test-cluster"),
+					resource.TestCheckResourceAttr(resourceName, "node_count", "2"),
+					resource.TestCheckResourceAttr(resourceName, "availability_zone", "ams-1"),
+					resource.TestCheckResourceAttrSet(resourceName, "cluster_id"),
+					resource.TestCheckResourceAttrSet(resourceName, "status"),
+				),
+			},
+		},
+	})
+}
+
 // testAccIPConfig returns the Terraform configuration for IP resource acceptance testing.
 func testAccIPConfig(token string) string {
 	return fmt.Sprintf(`
@@ -90,6 +120,21 @@ resource "hostman_ip" "test" {
   is_ddos_guard     = false
   availability_zone = "ams-1"
   comment           = "tf-test-ip"
+}
+`, token)
+}
+
+// testAccKubernetesConfig returns the Terraform configuration for Kubernetes resource acceptance testing.
+func testAccKubernetesConfig(token string) string {
+	return fmt.Sprintf(`
+provider "hostman" {
+  token = %q
+}
+
+resource "hostman_kubernetes" "test" {
+  name              = "tf-test-cluster"
+  node_count        = 2
+  availability_zone = "ams-1"
 }
 `, token)
 }
