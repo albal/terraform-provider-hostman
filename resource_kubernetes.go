@@ -90,7 +90,9 @@ func resourceKubernetesCreate(ctx context.Context, d *schema.ResourceData, meta 
 		payload["availability_zone"] = availabilityZone
 	}
 
-	body, err := makeRequest("POST", "https://hostman.com/api/v1/kubernetes", token, payload)
+	// Using /api/v1/clusters endpoint - consistent with pattern used by other resources
+	// (servers use /api/v1/servers, floating-ips use /api/v1/floating-ips)
+	body, err := makeRequest("POST", "https://hostman.com/api/v1/clusters", token, payload)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -146,7 +148,7 @@ func resourceKubernetesRead(ctx context.Context, d *schema.ResourceData, meta in
 	token := meta.(string)
 	id := d.Id()
 
-	body, err := makeRequest("GET", fmt.Sprintf("https://hostman.com/api/v1/kubernetes/%s", id), token, nil)
+	body, err := makeRequest("GET", fmt.Sprintf("https://hostman.com/api/v1/clusters/%s", id), token, nil)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -205,7 +207,7 @@ func resourceKubernetesUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	}
 
 	if len(changes) > 0 {
-		_, err := makeRequest("PUT", fmt.Sprintf("https://hostman.com/api/v1/kubernetes/%s", id), token, changes)
+		_, err := makeRequest("PUT", fmt.Sprintf("https://hostman.com/api/v1/clusters/%s", id), token, changes)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -218,7 +220,7 @@ func resourceKubernetesDelete(ctx context.Context, d *schema.ResourceData, meta 
 	token := meta.(string)
 	id := d.Id()
 
-	_, err := makeRequest("DELETE", fmt.Sprintf("https://hostman.com/api/v1/kubernetes/%s", id), token, nil)
+	_, err := makeRequest("DELETE", fmt.Sprintf("https://hostman.com/api/v1/clusters/%s", id), token, nil)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -234,7 +236,7 @@ func resourceKubernetesDelete(ctx context.Context, d *schema.ResourceData, meta 
 		}
 
 		// Check if cluster still exists
-		_, err := makeRequest("GET", fmt.Sprintf("https://hostman.com/api/v1/kubernetes/%s", id), token, nil)
+		_, err := makeRequest("GET", fmt.Sprintf("https://hostman.com/api/v1/clusters/%s", id), token, nil)
 		if err != nil {
 			// If we get an error (likely 404), the cluster is deleted
 			break
