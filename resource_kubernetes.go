@@ -411,7 +411,21 @@ func resourceKubernetesRead(ctx context.Context, d *schema.ResourceData, meta in
 	cluster := resp["cluster"].(map[string]interface{})
 
 	d.Set("name", cluster["name"])
-	d.Set("cluster_id", cluster["id"])
+	
+	// Convert cluster ID to string (it may come as float64 for large integers)
+	clusterID := ""
+	switch v := cluster["id"].(type) {
+	case string:
+		clusterID = v
+	case float64:
+		clusterID = fmt.Sprintf("%.0f", v)
+	case int:
+		clusterID = strconv.Itoa(v)
+	default:
+		clusterID = fmt.Sprintf("%v", v)
+	}
+	d.Set("cluster_id", clusterID)
+	
 	d.Set("status", cluster["status"])
 
 	if k8sVersion, ok := cluster["k8s_version"].(string); ok {
