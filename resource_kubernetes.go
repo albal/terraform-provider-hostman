@@ -378,13 +378,31 @@ func resourceKubernetesCreate(ctx context.Context, d *schema.ResourceData, meta 
 			return diag.Errorf("timeout waiting for cluster to become ready")
 		}
 
-		// Read current status
-		if diags := resourceKubernetesRead(ctx, d, meta); diags.HasError() {
-			return diags
+		// Check cluster status directly
+		body, err := makeRequest("GET", fmt.Sprintf("https://hostman.com/api/v1/k8s/clusters/%s", id), token, nil)
+		if err != nil {
+			return diag.FromErr(err)
 		}
 
-		status := d.Get("status").(string)
-		if status == "ready" || status == "running" {
+		var resp map[string]interface{}
+		if err := json.Unmarshal(body, &resp); err != nil {
+			return diag.FromErr(err)
+		}
+
+		cluster := resp["cluster"].(map[string]interface{})
+		
+		// Check for status first
+		status, statusOk := cluster["status"].(string)
+		if statusOk && (status == "failed" || status == "error" || status == "deleted") {
+			return diag.Errorf("cluster creation failed with status: %s", status)
+		}
+		
+		// Check if kubeconfig is available - this indicates the cluster is truly ready
+		kubeconfig, kubeconfigOk := cluster["kubeconfig"].(string)
+		endpoint, endpointOk := cluster["endpoint"].(string)
+		
+		// Cluster is ready when both kubeconfig and endpoint are available
+		if kubeconfigOk && kubeconfig != "" && endpointOk && endpoint != "" {
 			break
 		}
 
