@@ -10,7 +10,7 @@ func TestAPIEndpointPatterns(t *testing.T) {
 	expectedPatterns := map[string]string{
 		"servers":     "https://hostman.com/api/v1/servers",
 		"floating-ips": "https://hostman.com/api/v1/floating-ips", 
-		"clusters":    "https://hostman.com/api/v1/clusters",
+		"clusters":    "https://hostman.com/api/v1/k8s/clusters",
 	}
 
 	// This test serves as documentation and validation of expected API patterns
@@ -25,7 +25,7 @@ func TestKubernetesEndpointConsistency(t *testing.T) {
 	// Test that we're using the expected cluster endpoint pattern
 	// This helps catch endpoint misconfigurations early in development
 	
-	baseURL := "https://hostman.com/api/v1/clusters"
+	baseURL := "https://hostman.com/api/v1/k8s/clusters"
 	testID := "test-123"
 	
 	expectedEndpoints := map[string]string{
@@ -54,7 +54,7 @@ func TestAPIEndpointConsistency(t *testing.T) {
 	}{
 		{"servers", "https://hostman.com/api/v1/servers"},
 		{"floating-ips", "https://hostman.com/api/v1/floating-ips"},
-		{"clusters", "https://hostman.com/api/v1/clusters"},
+		{"clusters", "https://hostman.com/api/v1/k8s/clusters"},
 	}
 	
 	for _, tc := range testCases {

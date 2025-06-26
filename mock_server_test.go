@@ -15,47 +15,47 @@ func TestKubernetesResourceWithMockServer(t *testing.T) {
 	// Create a mock server that responds to the expected endpoints
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/api/v1/clusters"):
+		case r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/api/v1/k8s/clusters"):
 			// Mock cluster creation response
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`{"cluster": {"id": "test-123", "name": "test-cluster", "status": "creating"}}`))
-		case r.Method == "GET" && strings.Contains(r.URL.Path, "/api/v1/clusters/"):
+		case r.Method == "GET" && strings.Contains(r.URL.Path, "/api/v1/k8s/clusters/"):
 			// Mock cluster read response
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`{"cluster": {"id": "test-123", "name": "test-cluster", "status": "ready", "node_count": 2, "endpoint": "https://test.k8s.example.com", "kubeconfig": "test-kubeconfig"}}`))
-		case r.Method == "DELETE" && strings.Contains(r.URL.Path, "/api/v1/clusters/"):
+		case r.Method == "DELETE" && strings.Contains(r.URL.Path, "/api/v1/k8s/clusters/"):
 			// Mock cluster deletion response
 			w.WriteHeader(http.StatusNotFound) // Simulate cluster not found after deletion
 		default:
-			// Return 404 for unexpected endpoints (like the old /kubernetes endpoint)
+			// Return 404 for unexpected endpoints (like the old /clusters endpoint without k8s prefix)
 			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte("404 page not found"))
 		}
 	}))
 	defer server.Close()
 
-	// Test that the old /kubernetes endpoint would return 404
-	oldEndpointResp, err := http.Get(server.URL + "/api/v1/kubernetes")
+	// Test that the old /clusters endpoint would return 404
+	oldEndpointResp, err := http.Get(server.URL + "/api/v1/clusters")
 	if err != nil {
 		t.Fatalf("Failed to make request: %v", err)
 	}
 	defer oldEndpointResp.Body.Close()
 	
 	if oldEndpointResp.StatusCode != http.StatusNotFound {
-		t.Errorf("Expected 404 for old /kubernetes endpoint, got %d", oldEndpointResp.StatusCode)
+		t.Errorf("Expected 404 for old /clusters endpoint, got %d", oldEndpointResp.StatusCode)
 	}
 
-	// Test that the new /clusters endpoint works
-	newEndpointResp, err := http.Post(server.URL+"/api/v1/clusters", "application/json", strings.NewReader(`{"name":"test"}`))
+	// Test that the new /k8s/clusters endpoint works
+	newEndpointResp, err := http.Post(server.URL+"/api/v1/k8s/clusters", "application/json", strings.NewReader(`{"name":"test"}`))
 	if err != nil {
 		t.Fatalf("Failed to make request: %v", err)
 	}
 	defer newEndpointResp.Body.Close()
 	
 	if newEndpointResp.StatusCode != http.StatusOK {
-		t.Errorf("Expected 200 for new /clusters endpoint, got %d", newEndpointResp.StatusCode)
+		t.Errorf("Expected 200 for new /k8s/clusters endpoint, got %d", newEndpointResp.StatusCode)
 	}
 }
 
@@ -70,7 +70,7 @@ func TestResourceEndpointsValidation(t *testing.T) {
 		{
 			name:            "kubernetes_resource",
 			resource:        resourceKubernetes(),
-			expectedPattern: "clusters", // Should use /clusters endpoint, not /kubernetes
+			expectedPattern: "k8s/clusters", // Should use /k8s/clusters endpoint
 		},
 		{
 			name:            "server_resource", 
