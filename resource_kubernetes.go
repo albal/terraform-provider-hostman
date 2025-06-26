@@ -397,8 +397,8 @@ func resourceKubernetesCreate(ctx context.Context, d *schema.ResourceData, meta 
 			return diag.Errorf("cluster creation failed with status: %s", status)
 		}
 		
-		// Check if cluster is in a ready state
-		if statusOk && status == "ready" {
+		// Check if cluster is in a ready state (ready or started)
+		if statusOk && (status == "ready" || status == "started") {
 			// Try to fetch kubeconfig from the dedicated endpoint
 			kubeconfigBody, kubeconfigErr := makeRequest("GET", fmt.Sprintf("https://hostman.com/api/v1/k8s/clusters/%s/kubeconfig", id), token, nil)
 			if kubeconfigErr == nil {
